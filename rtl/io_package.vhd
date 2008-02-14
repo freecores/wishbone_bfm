@@ -119,6 +119,26 @@ signal bus_c    : bus_cycle :=
             );
 
 -- ----------------------------------------------------------------------
+--  to_nibble
+-- ----------------------------------------------------------------------
+-- usage to_nibble( slv  ); -- convert 4 bit slv to a character
+function to_nibble( s:std_logic_vector(3 downto 0)) return character;
+
+
+-- ----------------------------------------------------------------------
+--  to_hex
+-- ----------------------------------------------------------------------
+-- usage to_hex( slv  ); -- convert a slv to a string
+function to_hex( v:std_logic_vector) return string;
+
+
+
+
+
+
+
+
+-- ----------------------------------------------------------------------
 --  clock_wait
 -- ----------------------------------------------------------------------
 -- usage clock_wait( number of cycles, bus_record ); -- wait n number of clock cycles
@@ -165,7 +185,7 @@ procedure wr_32 (
 -- usage rd_32 ( address, data , bus_record )-- read 32 bit data from a 32 bit address
 procedure rd_32 ( 
             constant address_data   : in std_logic_vector( 31 downto 0);
-            signal   read_data      : out std_logic_vector( 31 downto 0);
+            variable read_data      : out std_logic_vector( 31 downto 0);
             signal   bus_c          : inout bus_cycle
                 );           
 
@@ -183,6 +203,46 @@ end io_pack;
 -- -------------------------------------------------------------------------
 package body io_pack is
 -- -------------------------------------------------------------------------
+
+-- ----------------------------------------------------------------------
+--  to_nibble
+-- ----------------------------------------------------------------------
+-- usage to_nibble( slv  ); -- convert 4 bit slv to a character
+function to_nibble( s:std_logic_vector(3 downto 0)) return character is
+begin
+	case s is
+		when "0000" => return '0';
+		when "0001" => return '1';
+		when "0010" => return '2';
+		when "0011" => return '3';
+		when "0100" => return '4';
+		when "0101" => return '5';
+		when "0110" => return '6';
+		when "0111" => return '7';
+		when "1000" => return '8';
+		when "1001" => return '9';
+		when "1010" => return 'A';
+		when "1011" => return 'B';
+		when "1100" => return 'C';
+		when "1101" => return 'D';
+		when "1110" => return 'E';
+		when "1111" => return 'F';
+		when others=> return '?';
+	end case;
+end function to_nibble;
+
+
+-- ----------------------------------------------------------------------
+--  to_hex
+-- ----------------------------------------------------------------------
+-- usage to_hex( slv  ); -- convert a slv to a string
+function to_hex( v:std_logic_vector) return string is
+	constant c:std_logic_vector(v'length+3 downto 1) := "000" & to_x01(v);
+begin
+	if v'length < 1 then return ""; end if;
+	return to_hex(c(v'length downto 5)) & to_nibble(c(4 downto 1));
+end function to_hex;
+
 
 
 -- ----------------------------------------------------------------------
@@ -292,9 +352,15 @@ end procedure wr_32;
 --  rd_32
 -- ----------------------------------------------------------------------
 -- usage rd_32 ( address, data , bus_record )-- read 32 bit data from a 32 bit address
+--
+--  Note: need read data to be a variable to be passed back to calling process;
+--   If it's a signal, it's one delta out, and in the calling process
+--    it will have the wrong value, the one after the clock !
+--
+
 procedure rd_32 ( 
             constant address_data   : in std_logic_vector( 31 downto 0);
-            signal   read_data      : out std_logic_vector( 31 downto 0);
+            variable read_data      : out std_logic_vector( 31 downto 0);
             signal   bus_c          : inout bus_cycle
                 ) is
 
@@ -320,7 +386,7 @@ begin
         
     end loop;
 
-    read_data       <= bus_c.dat_i;
+    read_data       := bus_c.dat_i;
     bus_c.c_type    <= bus_idle;
     bus_c.add_o     <= ( others => '0');
     bus_c.dat_o     <= ( others => '0');    

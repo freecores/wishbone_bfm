@@ -69,6 +69,8 @@ use work.io_pack.all;
 
 library ieee;
 use ieee.std_logic_1164.all;
+use ieee.std_logic_textio.all;
+
 -- --------------------------------------------------------------------
 -- --------------------------------------------------------------------
 
@@ -105,7 +107,6 @@ architecture Behavioral of wb_master is
 -- --------------------------------------------------------------------
 
 signal reset_int    : std_logic;
-signal slv_32       : std_logic_vector( 31 downto 0);
 
 -- --------------------------------------------------------------------
 begin
@@ -134,6 +135,14 @@ RST_sys <= reset_int;
 
 -- --------------------------------------------------------------------
 test_loop : process
+
+-- need to use variables to get 'data' down from the procedures,
+--  if we used a signal, then we get the value after the clock edge, 
+--   which is not what we want, we need the value at the clock edge.
+--
+variable slv_32       : std_logic_vector( 31 downto 0);
+
+
 begin
 
 		-- Wait 100 ns for global reset to finish
@@ -145,14 +154,11 @@ begin
 wb_init( bus_c);        -- initalise wishbone bus
 wb_rst( 2, reset_int, bus_c ); -- reset system for 2 clocks
 
-wr_32( x"8000_0001", x"5555_5555", bus_c);  -- write 32 bits address of 32 bit data
+
+wr_32( x"8000_0004", x"5555_5555", bus_c);  -- write 32 bits address of 32 bit data
 
 rd_32( x"8000_0004", slv_32, bus_c);  -- read 32 bits address of 32 bit data
-
-wr_32( x"8000_0004", x"AA55_55AA", bus_c);  -- write 32 bits address of 32 bit data
-
-rd_32( x"8000_0004", slv_32, bus_c);  -- read 32 bits address of 32 bit data
-
+report to_hex( slv_32);
 
 clock_wait( 1, bus_c );
 wb_rst( 2, reset_int, bus_c ); -- reset system for 2 clocks
