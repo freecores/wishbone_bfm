@@ -1,13 +1,13 @@
 -------------------------------------------------------------------------------
 ----                                                                       ----
----- WISHBONE XXX IP Core                                                  ----
+---- WISHBONE Wishbone_BFM IP Core                                         ----
 ----                                                                       ----
----- This file is part of the XXX project						           ----
----- http://www.opencores.org/cores/xxx/			        	           ----
+---- This file is part of the Wishbone_BFM project                         ----
+---- http://www.opencores.org/cores/Wishbone_BFM/                          ----
 ----                                                                       ----
 ---- Description                                                           ----
----- Implementation of XXX IP core according to                            ----
----- XXX IP core specification document.                                   ----
+---- Implementation of Wishbone_BFM IP core according to                   ----
+---- Wishbone_BFM IP core specification document.                          ----
 ----                                                                       ----
 ---- To Do:                                                                ----
 ----	NA                                                                 ----

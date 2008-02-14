@@ -1,13 +1,13 @@
 -------------------------------------------------------------------------------
 ----                                                                       ----
----- WISHBONE XXX IP Core                                                  ----
+---- WISHBONE Wishbone_BFM IP Core                                         ----
 ----                                                                       ----
----- This file is part of the XXX project						           ----
----- http://www.opencores.org/cores/xxx/			        	           ----
+---- This file is part of the Wishbone_BFM project                         ----
+---- http://www.opencores.org/cores/Wishbone_BFM/                          ----
 ----                                                                       ----
 ---- Description                                                           ----
----- Implementation of XXX IP core according to                            ----
----- XXX IP core specification document.                                   ----
+---- Implementation of Wishbone_BFM IP core according to                   ----
+---- Wishbone_BFM IP core specification document.                          ----
 ----                                                                       ----
 ---- To Do:                                                                ----
 ----	NA                                                                 ----
@@ -72,8 +72,9 @@ constant clk_period         : time := 10 ns;    -- period of simulation clock
 type cycle_type is (    unknown,
                         bus_rst,
                         bus_idle,
-                        rd32, rd16, rd8, 
-                        wr32, wr16, wr8
+                        rd32,  rd16,  rd8, 
+                        wr32,  wr16,  wr8,
+                        rmw32, rmw16, rmw8
                     );
   
 type bus_cycle is
@@ -188,6 +189,23 @@ procedure rd_32 (
             variable read_data      : out std_logic_vector( 31 downto 0);
             signal   bus_c          : inout bus_cycle
                 );           
+
+
+-- ----------------------------------------------------------------------
+--  rmw_32
+-- ----------------------------------------------------------------------
+-- usage rmw_32 ( address, read_data, write_data , bus_record )-- read 32 bit data from a 32 bit address
+--                                                                then write new 32 bit data to that address
+
+procedure rmw_32 ( 
+            constant address_data   : in std_logic_vector( 31 downto 0);
+            variable read_data      : out std_logic_vector( 31 downto 0);
+            constant write_data     : in std_logic_vector( 31 downto 0);
+            signal   bus_c          : inout bus_cycle
+                );           
+
+
+
 
 
 -- -------------------------------------------------------------------------
@@ -397,6 +415,71 @@ begin
 
 end procedure rd_32;
     
+
+-- ----------------------------------------------------------------------
+--  rmw_32
+-- ----------------------------------------------------------------------
+-- usage rmw_32 ( address, read_data, write_data , bus_record )-- read 32 bit data from a 32 bit address
+--                                                                then write new 32 bit data to that address
+
+procedure rmw_32 ( 
+            constant address_data   : in std_logic_vector( 31 downto 0);
+            variable read_data      : out std_logic_vector( 31 downto 0);
+            constant write_data     : in std_logic_vector( 31 downto 0);
+            signal   bus_c          : inout bus_cycle
+                ) is
+
+variable  bus_read_timer : integer;
+variable  bus_write_timer : integer;
+
+begin
+-- first read
+    bus_c.c_type    <= rmw32;
+    bus_c.add_o     <= address_data;
+    bus_c.we        <= '0';                 -- read cycle
+    bus_c.sel       <= ( others => '1');    -- on all four banks
+    bus_c.cyc       <= '1';
+    bus_c.stb       <= '1';
+    
+    bus_read_timer := 0;
+
+    wait until rising_edge( bus_c.clk );
+    while bus_c.ack = '0' loop
+        bus_read_timer := bus_read_timer + 1;
+        wait until rising_edge( bus_c.clk );
+        
+        exit when bus_read_timer >= read32_time_out;
+        
+    end loop;
+
+    read_data       := bus_c.dat_i;
+
+-- now write
+    bus_c.dat_o     <= write_data;    
+    bus_c.we        <= '1';                 -- write cycle
+    
+    bus_write_timer := 0;
+    
+    wait until rising_edge( bus_c.clk );
+    
+    while bus_c.ack = '0' loop
+        bus_write_timer := bus_write_timer + 1;
+        wait until rising_edge( bus_c.clk );
+        
+        exit when bus_write_timer >= write32_time_out;
+        
+    end loop;
+
+    bus_c.c_type    <= bus_idle;
+    bus_c.add_o     <= ( others => '0');
+    bus_c.dat_o     <= ( others => '0');    
+    bus_c.we        <= '0';
+    bus_c.sel       <= ( others => '0');
+    bus_c.cyc       <= '0';
+    bus_c.stb       <= '0';
+
+end procedure rmw_32;
+
 
 -- -------------------------------------------------------------------------
 end io_pack;

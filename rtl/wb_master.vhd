@@ -1,13 +1,13 @@
 -------------------------------------------------------------------------------
 ----                                                                       ----
----- WISHBONE XXX IP Core                                                  ----
+---- WISHBONE Wishbone_BFM IP Core                                         ----
 ----                                                                       ----
----- This file is part of the XXX project						           ----
----- http://www.opencores.org/cores/xxx/			        	           ----
+---- This file is part of the Wishbone_BFM project                         ----
+---- http://www.opencores.org/cores/Wishbone_BFM/                          ----
 ----                                                                       ----
 ---- Description                                                           ----
----- Implementation of XXX IP core according to                            ----
----- XXX IP core specification document.                                   ----
+---- Implementation of Wishbone_BFM IP core according to                   ----
+---- Wishbone_BFM IP core specification document.                          ----
 ----                                                                       ----
 ---- To Do:                                                                ----
 ----	NA                                                                 ----
@@ -159,6 +159,18 @@ wr_32( x"8000_0004", x"5555_5555", bus_c);  -- write 32 bits address of 32 bit d
 
 rd_32( x"8000_0004", slv_32, bus_c);  -- read 32 bits address of 32 bit data
 report to_hex( slv_32);
+
+clock_wait( 2, bus_c );
+
+rmw_32( x"8000_0004", slv_32, x"ABCD_EF01", bus_c ); 
+report to_hex( slv_32);
+
+clock_wait( 2, bus_c );
+
+rmw_32( x"8000_0004", slv_32, x"01CD_EFAB", bus_c ); 
+report to_hex( slv_32);
+
+
 
 clock_wait( 1, bus_c );
 wb_rst( 2, reset_int, bus_c ); -- reset system for 2 clocks
