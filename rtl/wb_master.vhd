@@ -108,6 +108,7 @@ architecture Behavioral of wb_master is
 
 signal reset_int    : std_logic;
 
+
 -- --------------------------------------------------------------------
 begin
 -- --------------------------------------------------------------------
@@ -142,6 +143,13 @@ test_loop : process
 --
 variable slv_32       : std_logic_vector( 31 downto 0);
 
+variable bka_test_array : block_type :=
+    ( others => x"0000_0000");
+variable bkd_test_array : block_type :=
+    ( others => x"0000_0000");
+
+
+
 
 begin
 
@@ -154,22 +162,43 @@ begin
 wb_init( bus_c);        -- initalise wishbone bus
 wb_rst( 2, reset_int, bus_c ); -- reset system for 2 clocks
 
+-- set up some address / data pairs
+bka_test_array(0) := X"0000_0002";
+bkd_test_array(0) := X"5555_0002";
 
-wr_32( x"8000_0004", x"5555_5555", bus_c);  -- write 32 bits address of 32 bit data
+bka_test_array(1) := X"0000_0004";
+bkd_test_array(1) := X"55AA_0004";
 
-rd_32( x"8000_0004", slv_32, bus_c);  -- read 32 bits address of 32 bit data
-report to_hex( slv_32);
+bka_test_array(2) := X"0000_0006";
+bkd_test_array(2) := X"AAAA_0006";
 
-clock_wait( 2, bus_c );
 
-rmw_32( x"8000_0004", slv_32, x"ABCD_EF01", bus_c ); 
-report to_hex( slv_32);
+bkw_32( bka_test_array, bkd_test_array, 3, bus_c);
 
-clock_wait( 2, bus_c );
+clock_wait( 1, bus_c );
 
-rmw_32( x"8000_0004", slv_32, x"01CD_EFAB", bus_c ); 
-report to_hex( slv_32);
+bkr_32( bka_test_array, bkd_test_array, 3, bus_c);
 
+report to_hex(bkd_test_array(0));
+report to_hex(bkd_test_array(1));
+report to_hex(bkd_test_array(2));
+
+--
+--wr_32( x"8000_0004", x"5555_5555", bus_c);  -- write 32 bits address of 32 bit data
+--
+--rd_32( x"8000_0004", slv_32, bus_c);  -- read 32 bits address of 32 bit data
+--report to_hex( slv_32);
+--
+--clock_wait( 2, bus_c );
+--
+--rmw_32( x"8000_0004", slv_32, x"ABCD_EF01", bus_c ); 
+--report to_hex( slv_32);
+--
+--clock_wait( 2, bus_c );
+--
+--rmw_32( x"8000_0004", slv_32, x"01CD_EFAB", bus_c ); 
+--report to_hex( slv_32);
+--
 
 
 clock_wait( 1, bus_c );

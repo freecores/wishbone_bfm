@@ -63,18 +63,22 @@ package io_pack is
 
 constant write32_time_out   : integer := 6;    -- number of clocks to wait 
                                                 -- on w32, before an error
-
 constant read32_time_out    : integer := 6;    -- number of clocks to wait 
                                                 -- on r32, before an error
 
 constant clk_period         : time := 10 ns;    -- period of simulation clock
 
+constant max_block_size     : integer := 128;   -- maximum number of read or write 
+                                                -- locations in a block transfer
+
 type cycle_type is (    unknown,
                         bus_rst,
                         bus_idle,
-                        rd32,  rd16,  rd8, 
-                        wr32,  wr16,  wr8,
-                        rmw32, rmw16, rmw8
+                        rd32,  rd16,  rd8,  -- read 
+                        wr32,  wr16,  wr8,  -- write
+                        rmw32, rmw16, rmw8, -- read modify write
+                        bkr32, bkr16, brw8, -- block read
+                        bkw32, bkw16, bkw8  -- block write
                     );
   
 type bus_cycle is
@@ -118,6 +122,9 @@ signal bus_c    : bus_cycle :=
                 (others => 'Z'),
                 'Z'
             );
+
+type block_type is array ( max_block_size downto 0 ) of std_logic_vector( 31 downto 0 );
+
 
 -- ----------------------------------------------------------------------
 --  to_nibble
@@ -205,6 +212,31 @@ procedure rmw_32 (
                 );           
 
 
+-- ----------------------------------------------------------------------
+--  bkw_32
+-- ----------------------------------------------------------------------
+-- usage bkw_32 ( address_array, write_data_array, array_size , bus_record )
+-- write each data to the coresponding address of the array
+
+procedure bkw_32 ( 
+            constant address_data   : in block_type;
+            constant write_data     : in block_type;
+            constant array_size     : in integer;
+            signal   bus_c          : inout bus_cycle
+                );           
+
+-- ----------------------------------------------------------------------
+--  bkr_32
+-- ----------------------------------------------------------------------
+-- usage bkr_32 ( address_array, read_data_array, array_size , bus_record )
+-- read from each address data to the coresponding address of the array
+
+procedure bkr_32 ( 
+            constant address_data   : in block_type;
+            variable read_data      : out block_type;
+            constant array_size     : in integer;
+            signal   bus_c          : inout bus_cycle
+                ) ;
 
 
 
@@ -479,6 +511,104 @@ begin
     bus_c.stb       <= '0';
 
 end procedure rmw_32;
+
+
+-- ----------------------------------------------------------------------
+--  bkw_32
+-- ----------------------------------------------------------------------
+-- usage bkw_32 ( address_array, write_data_array, array_size , bus_record )
+-- write each data to the coresponding address of the array
+
+procedure bkw_32 ( 
+            constant address_data   : in block_type;
+            constant write_data     : in block_type;
+            constant array_size     : in integer;
+            signal   bus_c          : inout bus_cycle
+                ) is
+variable  bus_write_timer : integer;
+
+begin
+-- for each element, perform a write 32.
+
+for n in 0 to array_size - 1 loop
+    bus_c.c_type    <= bkw32;
+    bus_c.add_o     <= address_data(n);
+    bus_c.dat_o     <= write_data(n);    
+    bus_c.we        <= '1';                 -- write cycle
+    bus_c.sel       <= ( others => '1');    -- on all four banks
+    bus_c.cyc       <= '1';
+    bus_c.stb       <= '1';
+    
+    bus_write_timer := 0;
+    
+    wait until rising_edge( bus_c.clk );
+    
+        while bus_c.ack = '0' loop
+            bus_write_timer := bus_write_timer + 1;
+            wait until rising_edge( bus_c.clk );
+            
+            exit when bus_write_timer >= write32_time_out;
+            
+        end loop;
+    bus_c.c_type    <= bus_idle;
+    bus_c.add_o     <= ( others => '0');
+    bus_c.dat_o     <= ( others => '0');    
+    bus_c.we        <= '0';
+    bus_c.sel       <= ( others => '0');
+    bus_c.cyc       <= '0';
+    bus_c.stb       <= '0';
+end loop;
+
+end procedure bkw_32;
+
+-- ----------------------------------------------------------------------
+--  bkr_32
+-- ----------------------------------------------------------------------
+-- usage bkr_32 ( address_array, read_data_array, array_size , bus_record )
+-- read from each address data to the coresponding address of the array
+
+procedure bkr_32 ( 
+            constant address_data   : in block_type;
+            variable read_data      : out block_type;
+            constant array_size     : in integer;
+            signal   bus_c          : inout bus_cycle
+                ) is
+variable  bus_read_timer : integer;
+
+begin
+-- for each element, perform a read  32.
+
+for n in 0 to array_size - 1 loop
+    bus_c.c_type    <= bkr32;
+    bus_c.add_o     <= address_data(n);
+    bus_c.we        <= '0';                 -- read cycle
+    bus_c.sel       <= ( others => '1');    -- on all four banks
+    bus_c.cyc       <= '1';
+    bus_c.stb       <= '1';
+    
+    bus_read_timer := 0;
+    
+    wait until rising_edge( bus_c.clk );
+    
+    while bus_c.ack = '0' loop
+        bus_read_timer := bus_read_timer + 1;
+        wait until rising_edge( bus_c.clk );
+        
+        exit when bus_read_timer >= read32_time_out;
+        
+    end loop;
+
+    read_data(n)    := bus_c.dat_i;
+    bus_c.c_type    <= bus_idle;
+    bus_c.add_o     <= ( others => '0');
+    bus_c.dat_o     <= ( others => '0');    
+    bus_c.we        <= '0';
+    bus_c.sel       <= ( others => '0');
+    bus_c.cyc       <= '0';
+    bus_c.stb       <= '0';
+end loop;
+
+end procedure bkr_32;
 
 
 -- -------------------------------------------------------------------------
